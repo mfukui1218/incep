@@ -40,4 +40,3 @@ RUN mkdir -p /run/php && \
 
 # 起動
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["php-fpm8.4", "-F"]

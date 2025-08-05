@@ -5,7 +5,6 @@ set -e
 : "${MYSQL_DATABASE:?MYSQL_DATABASE 未定義}"
 : "${MYSQL_USER:?MYSQL_USER 未定義}"
 : "${MYSQL_PASSWORD:?MYSQL_PASSWORD 未定義}"
-: "${MYSQL_HOST:?MYSQL_HOST 未定義}"
 : "${WP_ADMIN_USER:?WP_ADMIN_USER 未定義}"
 : "${WP_ADMIN_PASS:?WP_ADMIN_PASS 未定義}"
 : "${WP_ADMIN_EMAIL:?WP_ADMIN_EMAIL 未定義}"
@@ -21,6 +20,13 @@ if [ ! -f wp-load.php ]; then
     echo "📦 WordPress をダウンロード中..."
     wp core download --allow-root
 fi
+
+echo "⏳ MariaDB の起動を待機しています..."
+until wp db check --allow-root > /dev/null 2>&1; do
+    echo "🔁 データベースに接続できません、再試行します..."
+    sleep 2
+done
+echo "✅ MariaDB に接続できました"
 
 # wp-config作成
 if [ ! -f wp-config.php ]; then
@@ -58,4 +64,4 @@ if ! wp core is-installed --allow-root; then
 fi
 
 echo "🚀 php-fpm 起動"
-exec php-fpm8 --nodaemonize
+exec php-fpm8.4 --nodaemonize
