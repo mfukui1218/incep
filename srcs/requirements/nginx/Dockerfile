@@ -1,27 +1,32 @@
-FROM alpine:3.22
+FROM debian:bullseye
 
-RUN apk update && apk add --no-cache \
+# NGINXと必要なツールをインストール
+RUN apt-get update && apt-get install -y \
     nginx \
     openssl \
-    bash
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /etc/ssl/certs /etc/ssl/private && \
-    openssl req -x509 -nodes -days 365 \
-      -newkey rsa:2048 \
-      -keyout /etc/ssl/private/nginx.key \
-      -out /etc/ssl/certs/nginx.crt \
-      -subj "/C=JP/ST=Tokyo/L=Tokyo/O=42Tokyo/OU=Dev/CN=localhost"
+# SSL証明書を作成するスクリプトをコピー
+COPY tools/setup_ssl.sh /usr/local/bin/setup_ssl.sh
+RUN chmod +x /usr/local/bin/setup_ssl.sh
 
-# config ファイルを追加
-COPY conf/nginx.cnf /etc/nginx/nginx.cnf
-COPY conf/default.cnf /etc/nginx/conf.d/default.cnf
+# SSL証明書を生成
+RUN /usr/local/bin/setup_ssl.sh
 
-# フォルダ作成
-RUN mkdir -p /run/nginx
+# NGINX設定ファイルをコピー
+COPY conf/nginx.conf /etc/nginx/nginx.conf
+COPY conf/default.conf /etc/nginx/sites-available/default
 
-# 所有権変更
-RUN chown -R nginx:nginx /var/lib/nginx
+# デフォルトのNGINX設定を削除してカスタム設定をリンク
+RUN rm -f /etc/nginx/sites-enabled/default \
+    && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
+# ログディレクトリを作成
+RUN mkdir -p /var/log/nginx && \
+    chown -R www-data:www-data /var/log/nginx
+
+# ポート443を公開
 EXPOSE 443
 
+# NGINXをフォアグラウンドで実行
 CMD ["nginx", "-g", "daemon off;"]
